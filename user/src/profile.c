@@ -67,7 +67,11 @@ static inline uint64_t do_get_tsc(void)
 {       
         uint64_t t;
 
+#if defined(__i386__) || defined(__x86_64__)
         __asm__ volatile (".byte 0x0f, 0x31" : "=A" (t));
+#else
+        t = 0;
+#endif
 
         return t;
 }
