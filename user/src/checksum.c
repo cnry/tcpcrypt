@@ -26,7 +26,7 @@ typedef __u32 __wsum;
 typedef __u32 u32;
 typedef u32 __be32;
 
-# define __force
+#define __force
 
 extern unsigned int csum_partial(const unsigned char * buff, int len,
 				 unsigned int sum);
@@ -114,12 +114,21 @@ static void checksum_tcp_generic(struct ip *ip, struct tcphdr *tcp, int sum)
 }
 
 static inline __sum16 csum_fold(__wsum sum)
-{       
-        asm("addl %1, %0                ;\n"
-            "adcl $0xffff, %0   ;\n"
+{
+#ifdef __arm__
+        asm("add  %0, %1, %1, ror #16"
+            : "=r" (sum)
+            : "r" (sum)
+            : "cc");
+
+#elif defined(__i386__) || defined(__x86_64__)
+        asm("addl %1, %0      ;\n"
+            "adcl $0xffff, %0 ;\n"
             : "=r" (sum)
             : "r" ((__force u32)sum << 16),
               "0" ((__force u32)sum & 0xffff0000));
+#endif
+
         return (__force __sum16)(~(__force u32)sum >> 16);
 }
 
@@ -128,13 +137,31 @@ static inline __wsum csum_tcpudp_nofold(__be32 saddr, __be32 daddr,
                                         unsigned short proto,
                                         __wsum sum)
 {
-        asm("addl %1, %0        ;\n"
-            "adcl %2, %0        ;\n"
-            "adcl %3, %0        ;\n"
-            "adcl $0, %0        ;\n"
+#ifdef __arm__
+        asm("adds   %0, %1, %2         ;\n"
+            "adcs   %0, %0, %3         ;\n"
+            "adcs   %0, %0, %4, lsl #8 ;\n"
+            "adcs   %0, %0, %5         ;\n"
+            "adc    %0, %0, #0"
+            : "=&r"(sum)
+            : "r" (sum),
+              "r" (daddr),
+              "r" (saddr),
+              "r" (len),
+              "Ir" (htons(proto))
+            : "cc");
+
+#elif defined(__i386__) || defined(__x86_64__)
+        asm("addl %1, %0      ;\n"
+            "adcl %2, %0      ;\n"
+            "adcl %3, %0      ;\n"
+            "adcl $0, %0      ;\n"
             : "=r" (sum)
-            : "g" (daddr), "g"(saddr),
+            : "g" (daddr),
+              "g" (saddr),
               "g" ((len + proto) << 8), "0" (sum));
+#endif
+
         return sum;
 }
 
