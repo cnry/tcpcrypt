@@ -60,6 +60,7 @@
 /* -- Global Includes --------------------------------------------------- */
 /* ---------------------------------------------------------------------- */
 
+#include <linux/slab.h>         /* for kmalloc() */
 #include <linux/module.h>
 
 #include "umac.h"
@@ -90,15 +91,15 @@ typedef unsigned long      UWORD;  /* Register */
 /* GNU gcc and Microsoft Visual C++ (and copycats) on IA-32 are supported
  * with some assembly
  */
-#define GCC_X86         (__GNUC__ && __i386__)      /* GCC on IA-32       */
-#define MSC_X86         (_M_IX86)                   /* Microsoft on IA-32 */
+#define GCC_X86         (defined(__GNUC__) && defined(__i386__)) /* GCC on IA-32       */
+#define MSC_X86         (defined(_M_IX86)) /* Microsoft on IA-32 */
 
 /* Message "words" are read from memory in an endian-specific manner.     */
 /* For this implementation to behave correctly, __LITTLE_ENDIAN__ must    */
 /* be set true if the host computer is little-endian.                     */
 
 #ifndef __LITTLE_ENDIAN__
-#if __i386__ || __alpha__ || _M_IX86 || __LITTLE_ENDIAN
+#if defined(__i386__) || defined(__alpha__) || defined(_M_IX86) || defined(__LITTLE_ENDIAN)
 #define __LITTLE_ENDIAN__ 1
 #else
 #define __LITTLE_ENDIAN__ 0
@@ -111,10 +112,10 @@ typedef unsigned long      UWORD;  /* Register */
 /* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */
 
-#if (MSC_X86)
+#if MSC_X86
 #pragma warning(disable: 4731)  /* Turn off "ebp manipulation" warning    */
 #pragma warning(disable: 4311)  /* Turn off "pointer trunc" warning       */
-#if (__MWERKS__)
+#if defined(__MWERKS__)
 #define mmword xmmword   /* Metrowerks C 3.03 doesn't recognize mmword */
 #endif
 #endif
@@ -1637,7 +1638,7 @@ int uhash_reset(uhash_ctx_t pc)
  */
 static void uhash_init(uhash_ctx_t ahc, aes_int_key prf_key)
 {
-    int i;
+    size_t i;
     UINT8 buf[(8*STREAMS+4)*sizeof(UINT64)];
     
     /* Zero the entire uhash context */

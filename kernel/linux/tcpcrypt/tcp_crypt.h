@@ -186,25 +186,25 @@ static inline void skb_for_each_data(void *priv, struct sk_buff *skb,
                 unsigned char *p;
 
                 p = (unsigned char*) th + off;
-                m = kmap_atomic(virt_to_page(p), 0);
+                m = kmap_atomic(virt_to_page(p));
                 p = (unsigned char*) m + offset_in_page(p);
 
 		cb(priv, p, len);
 
-                kunmap_atomic(m, 0);
+                kunmap_atomic(m);
         }
 
         for (i = 0; i < shi->nr_frags; ++i) {
-                struct skb_frag_struct *f = &shi->frags[i];
+                skb_frag_t *f = &shi->frags[i];
                 void *m;
                 unsigned char *p;
 
-                p = m = kmap_atomic(f->page, 0);
+                p = m = kmap_atomic((struct page *) f);
                 p += f->page_offset;
 
 		cb(priv, p, f->size);
 
-                kunmap_atomic(m, 0);
+                kunmap_atomic(m);
         }
 }
 
