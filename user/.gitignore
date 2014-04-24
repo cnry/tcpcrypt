@@ -7,6 +7,10 @@
 .deps
 .libs
 Makefile
+Makefile.in
+/config/
+/m4/*.m4
+configure
 aclocal.m4
 config.log
 config.status
