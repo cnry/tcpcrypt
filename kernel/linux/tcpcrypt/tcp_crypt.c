@@ -1,5 +1,6 @@
 #include <linux/module.h>
 #include <linux/highmem.h>
+#include <linux/skbuff.h>
 #include <net/sock.h>
 #include <net/tcp.h>
 
@@ -110,7 +111,7 @@ static uint32_t get_addr(struct sock *sk)
 {
 	struct inet_sock *inet = inet_sk(sk);
 
-	return inet->daddr;
+	return inet->inet_daddr;
 }
 
 static int do_try_session_cache(struct sock *sk, struct sk_buff *skb)
@@ -323,7 +324,7 @@ static int inject_data(struct sock *sk, void *data, int len)
 	tcb = TCP_SKB_CB(skb);
         skb->csum    = 0;
         tcb->seq     = tcb->end_seq = tp->write_seq;
-        tcb->flags   = TCPCB_FLAG_ACK;
+        tcb->tcp_flags = TCPHDR_ACK;
         tcb->sacked  = 0;
         skb_header_release(skb);
         tcp_add_write_queue_tail(sk, skb);
@@ -1265,10 +1266,9 @@ static void process_init1(struct sock *sk, struct sk_buff *skb)
 
 	/* XXX */
 	if (shi->nr_frags == 1) {
-		const struct skb_frag_struct *f = &shi->frags[0];
+		skb_frag_t *f = &shi->frags[0];
 
-		s = (u16*) ((unsigned char*) pfn_to_kaddr(page_to_pfn(f->page))
-		                             + f->page_offset);
+		s = (u16*) ((unsigned char*) pfn_to_kaddr(page_to_pfn((struct page *) f)) + f->page_offset);
 	}
 
 	if (ntohs(*s++) != 0x0001) {
@@ -1443,15 +1443,13 @@ static void process_init2(struct sock *sk, struct sk_buff *skb)
 	struct skb_shared_info *shi = skb_shinfo(skb);
 
 	/* XXX check lengths */
-
 	s = (u16*) ((u8*) th + th->doff * 4);
 
 	/* XXX */
 	if (shi->nr_frags == 1) {
-		const struct skb_frag_struct *f = &shi->frags[0];
+		skb_frag_t *f = &shi->frags[0];
 
-		s = (u16*) ((unsigned char*) pfn_to_kaddr(page_to_pfn(f->page))
-		                             + f->page_offset);
+		s = (u16*) ((unsigned char*) pfn_to_kaddr(page_to_pfn((struct page *) f)) + f->page_offset);
 	}
 
 	if (ntohs(*s++) != 0x0002) {
@@ -1843,7 +1841,7 @@ static int tcpcrypt_setsockopt(struct sock *sk, void *optval, int len)
 	case TCPCRYPT_SO_RSA_KEY:
 		/* XXX var len, lock */
 		if (len > sizeof(rsa_key2)) {
-			printk(KERN_INFO "size got %d want %d\n",
+			printk(KERN_INFO "size got %d want %ld\n",
 			       len, sizeof(rsa_key2));
 			return -EINVAL;
 		}
@@ -1989,13 +1987,11 @@ static struct ctl_table tcpcrypt_sysctl[] = {
 		.mode	      = 0644,
 		.proc_handler = proc_dointvec,
 	},
-
-	{ .ctl_name = 0, }
 };
 
 static struct ctl_path tcpcrypt_sysctl_path[] = {
-	{ .procname = "net", .ctl_name = CTL_NET, },
-	{ .procname = "tcpcrypt", .ctl_name = NET_TCPCRYPT, },
+	{ .procname = "net" },
+	{ .procname = "tcpcrypt" },
 	{ }
 };
 

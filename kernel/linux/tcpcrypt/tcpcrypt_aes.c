@@ -129,9 +129,9 @@ static int do_skb(struct tcrypto_priv *priv, struct sk_buff *skb, int enc)
 	}
 
 	for (; i < frags; i++) {
-		const struct skb_frag_struct *f = &shi->frags[j];
+		skb_frag_t *f = &shi->frags[j];
 
-		sg_set_buf(&sg[i], (unsigned char*) pfn_to_kaddr(page_to_pfn(f->page)) 
+		sg_set_buf(&sg[i], (unsigned char*) pfn_to_kaddr(page_to_pfn((struct page *) f))
 				   + f->page_offset, f->size);
 		j++;
 		len += f->size;
